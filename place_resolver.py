@@ -1,39 +1,8 @@
 import elasticsearch
-import sys
+import sys, getopt
 import json
 import re
-
-### execution setup
-if len(sys.argv) < 3:
-    print('Usage:\n\t resolve-institutions.py <inputfile> <index-name> <es-host> \n')
-    print('Optional arguments:\n\t <port> <es-user-name> <es-password>\n')
-    sys.exit(2)
-
-INPUT_FILE       = sys.argv[1]
-ES_INDEX_NAME    = sys.argv[2]
-ES_HOST          = sys.argv[3]
-
-if len(sys.argv) > 4:
-    ES_PORT = sys.argv[4]
-else:
-    ES_PORT = 9200
-
-ES_URL_PREFIX = None
-if len(sys.argv) > 5:
-    ES_URL_PREFIX = sys.argv[5]
-
-ES_AUTH_USER = None
-ES_AUTH_PASSWORD = None
-if len(sys.argv) > 6:
-    ES_AUTH_USER     = sys.argv[6]
-    ES_AUTH_PASSWORD = sys.argv[7]
-
-ES_TIMEOUT = 3600
-
-SILENT = False
-
-
-
+import logging
 
 class PlaceResolver:
 
@@ -41,11 +10,12 @@ class PlaceResolver:
                     "region", "continent", "district", "metro", "town", "captial", \
                     "village", "settlement", "university"]
 
-    def __init__(self, host, index_name, port=9200, url_prefix=None, auth_user=None, auth_pwd=None, timeout=3600):
+    def __init__(self, host, index_name, port=9200, url_prefix='', auth_user=None, auth_pwd=None, timeout=3600, silent=True):
+        log_setup(silent)
         self.host = host
         self.port = port
         self.index_name = index_name
-        if ES_AUTH_USER:
+        if auth_user:
           print("Using authentication for " + auth_user)
           self.es = elasticsearch.Elasticsearch([{'host': host, 'port': port, 'url_prefix': url_prefix}], timeout=timeout, retry_on_timeout=True, http_auth=auth_user+":"+auth_pwd, connection_class=elasticsearch.RequestsHttpConnection) if host else elasticsearch.Elasticsearch()
         else:
@@ -125,7 +95,66 @@ def log(msg, always=False):
     if not SILENT or always:
         print(msg)
 
-### main
+def log_setup(silent):
+    SILENT = silent
+    if not SILENT:
+        logging.basicConfig(filename='place_resolver.log', filemode='w', level=logging.INFO)
 
-resolver = PlaceResolver(ES_HOST, ES_INDEX_NAME, port=ES_PORT, url_prefix=ES_URL_PREFIX, auth_user=ES_AUTH_USER, auth_pwd=ES_AUTH_PASSWORD)
-resolver.resolve_place("Arizona State Unversity")
+
+### execution setup
+# required arguments
+INPUT_FILE       = None
+ES_INDEX_NAME    = None
+ES_HOST          = 'localhost'
+
+# optional arguments
+ES_PORT = 9200
+ES_URL_PREFIX = None
+ES_AUTH_USER = None
+ES_AUTH_PASSWORD = None
+ES_TIMEOUT = 3600
+SILENT = True
+
+
+
+
+### main
+def main():
+    if len(sys.argv) < 3:
+        print('Usage:\n\t resolve-institutions.py <inputfile> <index-name> <es-host> \n')
+        print('Optional arguments:\n\t <port> <url-prefix> <es-user> <es-password> <timeout>\n')
+
+    argument_list = sys.argv[4:]
+    options = "p:f:u:s:t:"
+    long_options = ["port=", "url-prefix=", "es-user=", "es-password=", "timeout=", "verbose"]
+
+    try:
+        # Parsing argument
+        arguments, values = getopt.getopt(argument_list, options, long_options)
+        for currentArgument, currentValue in arguments:
+            if currentArgument in ("-p", "--port"):
+                ES_PORT = currentValue
+            if currentArgument in ("-f", "--url-prefix"):
+                ES_URL_PREFIX = currentValue
+            if currentArgument in ("-u", "--es-user"):
+                ES_AUTH_USER = currentValue
+            if currentArgument in ("-s", "--es-password"):
+                ES_AUTH_PASSWORD = currentValue
+            if currentArgument in ("-t", "--timeout"):
+                ES_TIMEOUT = currentValue
+            if currentArgument in ("--verbose"):
+                log_setup(FALSE)
+    except getopt.error as err:
+        print (str(err))
+        sys.exit(2)
+
+    INPUT_FILE       = sys.argv[1]
+    ES_INDEX_NAME    = sys.argv[2]
+    ES_HOST          = sys.argv[3]
+
+    resolver = PlaceResolver(ES_HOST, ES_INDEX_NAME, port=ES_PORT, url_prefix=ES_URL_PREFIX, auth_user=ES_AUTH_USER, auth_pwd=ES_AUTH_PASSWORD)
+    resolver.resolve_place("Arizona State University")
+
+
+if __name__ == "__main__":
+    main()
