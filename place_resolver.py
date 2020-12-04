@@ -5,6 +5,8 @@ import re
 import logging
 from place_reader import PlaceReader
 
+SILENT = True
+
 class PlaceResolver:
 
     place_indicators = ["republic", "land", "state", "countr", "place", "cit", "park", \
@@ -103,47 +105,51 @@ def log_setup(silent):
 
 
 ### execution setup
-# required arguments
-INPUT_FILE       = None
-ES_INDEX_NAME    = None
-ES_HOST          = 'localhost'
-
-# optional arguments
-ES_PORT = 9200
-ES_URL_PREFIX = None
-ES_AUTH_USER = None
-ES_AUTH_PASSWORD = None
-ES_TIMEOUT = 3600
-SILENT = True
-
-
-
-
 ### main
 def main():
+    # required arguments
+    INPUT_FILE       = None
+    ES_INDEX_NAME    = None
+    ES_HOST          = 'localhost'
+
+    # optional arguments
+    ES_PORT = 9200
+    ES_URL_PREFIX = None
+    ES_AUTH_USER = None
+    ES_AUTH_PASSWORD = None
+    ES_TIMEOUT = 3600
+
+    # the following arguments are for CSV files only
+    ID_COLUMN_NAME = None
+    PLACE_COLUMN_NAME = None
+
     if len(sys.argv) < 3:
         print('Usage:\n\t resolve-institutions.py <inputfile> <index-name> <es-host> \n')
         print('Optional arguments:\n\t <port> <url-prefix> <es-user> <es-password> <timeout>\n')
 
     argument_list = sys.argv[4:]
     options = "p:f:u:s:t:"
-    long_options = ["port=", "url-prefix=", "es-user=", "es-password=", "timeout=", "verbose"]
+    long_options = ["port=", "url-prefix=", "es-user=", "es-password=", "timeout=", "id-column=", "place-column=", "verbose"]
 
     try:
         # Parsing argument
         arguments, values = getopt.getopt(argument_list, options, long_options)
-        for currentArgument, currentValue in arguments:
-            if currentArgument in ("-p", "--port"):
-                ES_PORT = currentValue
-            if currentArgument in ("-f", "--url-prefix"):
-                ES_URL_PREFIX = currentValue
-            if currentArgument in ("-u", "--es-user"):
-                ES_AUTH_USER = currentValue
-            if currentArgument in ("-s", "--es-password"):
-                ES_AUTH_PASSWORD = currentValue
-            if currentArgument in ("-t", "--timeout"):
-                ES_TIMEOUT = currentValue
-            if currentArgument in ("--verbose"):
+        for current_argument, current_value in arguments:
+            if current_argument in ("-p", "--port"):
+                ES_PORT = current_value
+            if current_argument in ("-f", "--url-prefix"):
+                ES_URL_PREFIX = current_value
+            if current_argument in ("-u", "--es-user"):
+                ES_AUTH_USER = current_value
+            if current_argument in ("-s", "--es-password"):
+                ES_AUTH_PASSWORD = current_value
+            if current_argument in ("-t", "--timeout"):
+                ES_TIMEOUT = current_value
+            if current_argument in ("--id-column"):
+                ID_COLUMN_NAME = current_value
+            if current_argument in ("--place-column"):
+                PLACE_COLUMN_NAME = current_value
+            if current_argument in ("--verbose"):
                 log_setup(FALSE)
     except getopt.error as err:
         print (str(err))
@@ -155,10 +161,24 @@ def main():
 
     resolver = PlaceResolver(ES_HOST, ES_INDEX_NAME, port=ES_PORT, url_prefix=ES_URL_PREFIX, auth_user=ES_AUTH_USER, auth_pwd=ES_AUTH_PASSWORD)
 
-    place_reader = PlaceReader(INPUT_FILE)
+    extra_parameters = {}
+    if ID_COLUMN_NAME:
+        extra_parameters.update({
+            'id_column_name': ID_COLUMN_NAME
+        })
+    if PLACE_COLUMN_NAME:
+        extra_parameters.update({
+            'place_column_name': PLACE_COLUMN_NAME
+        })
+
+    place_reader = PlaceReader(INPUT_FILE, **extra_parameters)
     for place in place_reader.read_places():
         result = resolver.resolve_place(place["place_name"])
-
+        if "id" in place:
+            result.update({
+                "id": place["id"]
+            })
+        print(result)
 
 if __name__ == "__main__":
     main()
