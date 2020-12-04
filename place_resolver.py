@@ -3,6 +3,7 @@ import sys, getopt
 import json
 import re
 import logging
+from place_reader import PlaceReader
 
 class PlaceResolver:
 
@@ -153,7 +154,10 @@ def main():
     ES_HOST          = sys.argv[3]
 
     resolver = PlaceResolver(ES_HOST, ES_INDEX_NAME, port=ES_PORT, url_prefix=ES_URL_PREFIX, auth_user=ES_AUTH_USER, auth_pwd=ES_AUTH_PASSWORD)
-    resolver.resolve_place("Arizona State University")
+
+    place_reader = PlaceReader(INPUT_FILE)
+    for place in place_reader.read_places():
+        result = resolver.resolve_place(place["place_name"])
 
 
 if __name__ == "__main__":
