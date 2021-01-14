@@ -109,7 +109,7 @@ class PlaceResolver:
                     formatted_coords.append(process_length_3_coords(coords))
                     coords.clear()
                 if len(coords) == 2:
-                    formatted_coords.append(clean_coordinates(coord))
+                    formatted_coords.append(process_length_2_coords(coord))
                     coords.clear()
                 if len(coords) == 1:
                     formatted_coords.append(coords[0])
@@ -120,7 +120,7 @@ class PlaceResolver:
                     formatted_coords.append(process_length_3_coords(coords) * -1)
                     coords.clear()
                 if len(coords) == 2:
-                    formatted_coords.append(clean_coordinates(coord) * -1)
+                    formatted_coords.append(process_length_2_coords(coord) * -1)
                     coords.clear()
                 if len(coords) == 1:
                     formatted_coords.append(coords[0] * -1)
