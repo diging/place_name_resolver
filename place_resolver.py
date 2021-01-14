@@ -78,21 +78,21 @@ class PlaceResolver:
         return place_entries
 
     def process_length_3_coords(coords):
-        d = coords[0]
-        m = coords[1]
-        se = coords[2]
-        dd = 0;
-        if d == 0:
-            dd = ((m / 60.0) + (se / 3600.0));
+        decimal = coords[0]
+        minutes = coords[1]
+        seconds = coords[2]
+        decimal_degrees = 0;
+        if decimal == 0:
+            decimal_degrees = ((minutes / 60.0) + (seconds / 3600.0));
         else:
             # python doesn't have a clean way to get the symbol of a number so we use copysign
-            dd = math.copysign(1,d) * abs(d) + (m / 60.0) + (se / 3600.0)
-        return round(dd, 6)
+            decimal_degrees = math.copysign(1,decimal) * abs(decimal) + (minutes / 60.0) + (seconds / 3600.0)
+        return round(decimal_degrees, 6)
 
     def process_length_2_coords(coords):
-        d = coords[0]
-        m = coords[1]
-        return round(math.copysign(1,d) * abs(d) + (m / 60.0), 6)
+        decimal = coords[0]
+        minutes = coords[1]
+        return round(math.copysign(1,decimal) * abs(decimal) + (minutes / 60.0), 6)
 
     def clean_coordinates(coord):
         split_string =  coord.split("|")
@@ -104,6 +104,8 @@ class PlaceResolver:
                 coords.append(float(string))
             except:
                 pass
+            # Check if a string needs to be converted to decimal degrees by looking for ordinal directions
+            # The length of coordinates is used to determine what data is present
             if string in ["N", "E"]:
                 if len(coords) == 3:
                     formatted_coords.append(process_length_3_coords(coords))
