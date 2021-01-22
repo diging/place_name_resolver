@@ -94,39 +94,44 @@ class PlaceResolver:
         minutes = coords[1]
         return round(math.copysign(1,decimal) * abs(decimal) + (minutes / 60.0), 6)
 
+
+
+    def parse_string(string, coords):
+        try:
+            # check if string is a int/float and cast to float
+            coords.append(float(string))
+        except:
+            pass
+        # Check if a string needs to be converted to decimal degrees by looking for ordinal directions
+        # The length of coordinates is used to determine what data is present
+        # Example String Coord|40|00|00|N|116|19|36|E|region:CN-11_type:edu|display=inline,title
+        if string in ["N", "E"]:
+            if len(coords) == 3:
+                processed_coords =  process_length_3_coords(coords)
+            elif len(coords) == 2:
+                processed_coords =  process_length_2_coords(coords)
+            elif len(coords) == 1:
+                processed_coords = coords[0]
+            coords.clear()
+            return processed_coords
+        elif string in ["S", "W"]:
+            # handle negative coords
+            if len(coords) == 3:
+                return (process_length_3_coords(coords) * -1)
+            elif len(coords) == 2:
+                return (process_length_2_coords(coords) * -1)
+            elif len(coords) == 1:
+                return (coords[0] * -1)
+
     def clean_coordinates(coord):
         split_string =  coord.split("|")
         coords = []
         formatted_coords = []
         for string in split_string:
-            try:
-                # check if string is a int/float and cast to float
-                coords.append(float(string))
-            except:
-                pass
-            # Check if a string needs to be converted to decimal degrees by looking for ordinal directions
-            # The length of coordinates is used to determine what data is present
-            if string in ["N", "E"]:
-                if len(coords) == 3:
-                    formatted_coords.append(process_length_3_coords(coords))
-                    coords.clear()
-                if len(coords) == 2:
-                    formatted_coords.append(process_length_2_coords(coord))
-                    coords.clear()
-                if len(coords) == 1:
-                    formatted_coords.append(coords[0])
-                    coords.clear()
-            elif string in ["S", "W"]:
-                # handle negative coords
-                if len(coords) == 3:
-                    formatted_coords.append(process_length_3_coords(coords) * -1)
-                    coords.clear()
-                if len(coords) == 2:
-                    formatted_coords.append(process_length_2_coords(coord) * -1)
-                    coords.clear()
-                if len(coords) == 1:
-                    formatted_coords.append(coords[0] * -1)
-                    coords.clear()
+            parsed_string = parse_string(string, coords)
+            if parsed_string:
+                formatted_coords.append(parsed_string)
+                coords.clear()
         if coords:
             return coords
         return formatted_coords
