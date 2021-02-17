@@ -77,7 +77,7 @@ class PlaceResolver:
 
         return place_entries
 
-    def process_length_3_coords(coords):
+    def process_length_3_coords(self, coords):
         decimal = coords[0]
         minutes = coords[1]
         seconds = coords[2]
@@ -89,14 +89,14 @@ class PlaceResolver:
             decimal_degrees = math.copysign(1,decimal) * abs(decimal) + (minutes / 60.0) + (seconds / 3600.0)
         return round(decimal_degrees, 6)
 
-    def process_length_2_coords(coords):
+    def process_length_2_coords(self, coords):
         decimal = coords[0]
         minutes = coords[1]
         return round(math.copysign(1,decimal) * abs(decimal) + (minutes / 60.0), 6)
 
 
 
-    def parse_string(string, coords):
+    def parse_string(self, string, coords):
         try:
             # check if string is a int/float and cast to float
             coords.append(float(string))
@@ -107,9 +107,9 @@ class PlaceResolver:
         # Example String Coord|40|00|00|N|116|19|36|E|region:CN-11_type:edu|display=inline,title
         if string in ["N", "E"]:
             if len(coords) == 3:
-                processed_coords =  process_length_3_coords(coords)
+                processed_coords =  self.process_length_3_coords(coords)
             elif len(coords) == 2:
-                processed_coords =  process_length_2_coords(coords)
+                processed_coords =  self.process_length_2_coords(coords)
             elif len(coords) == 1:
                 processed_coords = coords[0]
             coords.clear()
@@ -117,18 +117,18 @@ class PlaceResolver:
         elif string in ["S", "W"]:
             # handle negative coords
             if len(coords) == 3:
-                return (process_length_3_coords(coords) * -1)
+                return (self.process_length_3_coords(coords) * -1)
             elif len(coords) == 2:
-                return (process_length_2_coords(coords) * -1)
+                return (self.process_length_2_coords(coords) * -1)
             elif len(coords) == 1:
                 return (coords[0] * -1)
 
-    def clean_coordinates(coord):
+    def clean_coordinates(self, coord):
         split_string =  coord.split("|")
         coords = []
         formatted_coords = []
         for string in split_string:
-            parsed_string = parse_string(string, coords)
+            parsed_string = self.parse_string(string, coords)
             if parsed_string:
                 formatted_coords.append(parsed_string)
                 coords.clear()
@@ -145,6 +145,7 @@ class PlaceResolver:
             log("INFO: {} has coordinates {}.".format(entry['title'], entry['coordinates']))
         result = {'place_name': place_name}
         if potential_place_entries:
+            print(potential_place_entries[0]['coordinates'])
             result.update({
                 'wikipedia_entry_title': potential_place_entries[0]['title'],
                 'coodinates': potential_place_entries[0]['coordinates'],
