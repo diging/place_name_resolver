@@ -145,11 +145,12 @@ def main():
     ID_COLUMN_NAME = None
     PLACE_COLUMN_NAME = None
 
-    OUTPUT_FILE = None
+    OUTPUT_FILE = "results.csv"
 
     if len(sys.argv) < 3:
-        print('Usage:\n\t resolve-institutions.py <inputfile> <index-name> <es-host> \n')
-        print('Optional arguments:\n\t <port> <url-prefix> <es-user> <es-password> <timeout>\n')
+        print('Usage:\n\t resolve-institutions.py <inputfile> <index-name> \n')
+        print('Optional arguments:\n\t <es-host> -p <elastic-port> --url-prefix <elastic-prefix> -u <username> -s <password> -o <output-file> -t <timeout> --id-column <id-column> --place-column <place-column> --verbose\n')
+        exit()
 
     argument_list = sys.argv[4:]
     options = "p:f:u:s:t:o:"
