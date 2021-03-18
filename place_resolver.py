@@ -176,7 +176,7 @@ class PlaceResolver:
 
         return result
 
-def log(msg, always=True):
+def log(msg, always=False):
     if not SILENT or always:
         print(msg)
 
