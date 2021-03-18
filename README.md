@@ -1,6 +1,6 @@
 # Place name resolver
 
-This is a Python script to retrieve coordinates for place names such as university names, city names, etc. The script will search Wikipedia for matching entries for a place name and if a matching entry has coordinates, those coordinates will be returned. I requires an Elasticsearch instance that has all Wikipedia articles indexed (see [this script](https://github.com/diging/cord19-geo-explorer-utils/tree/732dfde5310a04d188bdec14ae0d7a2f659b1d51/wikipedia)).
+This is a Python script to retrieve coordinates for place names such as university names, city names, etc. The script will search Wikipedia articles for matching entries for a place name and if a matching entry has coordinates, those coordinates will be returned. I requires an Elasticsearch instance that has all Wikipedia articles indexed (see [this script](https://github.com/diging/cord19-geo-explorer-utils/tree/732dfde5310a04d188bdec14ae0d7a2f659b1d51/wikipedia)).
 
 ## Requirements
 - Python 3.7
