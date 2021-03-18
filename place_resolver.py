@@ -4,15 +4,13 @@ import json
 import re
 import logging
 import math
+import csv
+import textdistance
 from place_reader import PlaceReader
 
 SILENT = True
 
 class PlaceResolver:
-
-    place_indicators = ["republic", "land", "state", "countr", "place", "cit", "park", \
-                    "region", "continent", "district", "metro", "town", "captial", \
-                    "village", "settlement", "university"]
 
     def __init__(self, host, index_name, port=9200, url_prefix='', auth_user=None, auth_pwd=None, timeout=3600, silent=True):
         log_setup(silent)
@@ -34,12 +32,20 @@ class PlaceResolver:
         for entry in entries:
             entry_data = entry['_source']
             complete_text = entry_data['complete_text']
+            # first we check if this could be a fit or if the article is
+            # too far off when comparing the strings
+            # similarity = textdistance.hamming.normalized_similarity(title, entry_data['title'])
+            similarity = textdistance.jaro_winkler(title, entry_data['title'])
+            # we assume that anything under 0.4 is just wrong because too different
+            if similarity < 0.4:
+                log("WARN: Skipping {} because not similar enough to {} (score {}).".format(entry_data['title'], title, similarity))
+                continue
             if complete_text.strip().lower().startswith("#redirect"):
                 redirect_title, redirect_entry = self.follow_redirect(entry_data)
                 if redirect_entry:
                     log("INFO: '{}' redirects to '{}'".format(entry_data['title'].strip(), redirect_title))
                 else:
-                    log("WARN: '{}' is a redirect, but can't resolve redirect.")
+                    log("WARN: '{}' is a redirect, but can't resolve redirect.".format(entry_data['title'].strip()))
                 found_entries.append(redirect_entry)
             else:
                 log("INFO: Found '{}'".format(entry_data['title'].strip()))
@@ -50,6 +56,7 @@ class PlaceResolver:
     def follow_redirect(self, entry):
         redirect_pattern = r"#([rR][eE][Dd][Ii][Rr][Ee][Cc][Tt])\s*\[\[(.+?)\]\]"
         m = re.search(redirect_pattern, entry['complete_text'])
+        redirect_title = ''
         if m:
             redirect_title = m.group(2)
             results = self.es.search(index=self.index_name, body={"query": {"match": { "title_keyword": redirect_title}}})
@@ -57,23 +64,37 @@ class PlaceResolver:
             # we assume Elasticsearch returns the correct entry for the given title first
             if results and results['hits']['hits']:
                 return redirect_title, results['hits']['hits'][0]['_source']
+        else:
+            log("WARN: '{}' is a redirect, but can't find redirection.".format(entry['complete_text']))
         return redirect_title, None
 
     def filter_place_entries(self, entries):
         place_indicators = ["republic", "land", "state", "countr", "place", "cit", "park", \
-                            "region", "continent", "district", "metro", "town", "captial", \
-                            "village", "settlement", "universit"]
+                        "region", "continent", "district", "metro", "town", "captial", \
+                        "village", "settlement", "universit", "organization", "institut", \
+                        "academy", "hospital"]
 
         place_entries = []
         for entry in entries:
             if not entry:
                 continue
             if 'categories' in entry.keys():
+                print(entry['categories'])
                 place_catgories = list(filter(lambda c: any(pi in c.lower() for pi in place_indicators), entry['categories']))
             else:
                 place_catgories = []
+
+            # sometimes the coords were not correctly indexed, so we'll look for them again
+            if not 'coordinates' in entry.keys() or not entry['coordinates']:
+                coord_pattern = r"\{\{ *([Cc][Oo][Oo][Rr][Dd]\|.+?)\}\}"
+                m = re.search(coord_pattern, entry['complete_text'])
+                if m:
+                    coords = m.group(1)
+                    entry['coordinates'] = coords
             if place_catgories and 'coordinates' in entry.keys() and entry['coordinates']:
                 place_entries.append(entry)
+            else:
+                log("INFO: skipping {} because no coordinates or no matching categories.".format(entry['title']))
 
         return place_entries
 
@@ -143,7 +164,7 @@ class PlaceResolver:
         log("INFO: Found {} potential place entries.".format(len(potential_place_entries)))
         for entry in potential_place_entries:
             log("INFO: {} has coordinates {}.".format(entry['title'], entry['coordinates']))
-        result = {'place_name': place_name}
+        result = {'place_name': place_name, 'wikipedia_entry_title': '', 'coodinates':'', 'wikipedia_entry_url': ''}
         if potential_place_entries:
             print(potential_place_entries[0]['coordinates'])
             result.update({
@@ -161,6 +182,7 @@ def log(msg, always=False):
         print(msg)
 
 def log_setup(silent):
+    global SILENT
     SILENT = silent
     if not SILENT:
         logging.basicConfig(filename='place_resolver.log', filemode='w', level=logging.INFO)
@@ -185,13 +207,16 @@ def main():
     ID_COLUMN_NAME = None
     PLACE_COLUMN_NAME = None
 
+    OUTPUT_FILE = "results.csv"
+
     if len(sys.argv) < 3:
-        print('Usage:\n\t resolve-institutions.py <inputfile> <index-name> <es-host> \n')
-        print('Optional arguments:\n\t <port> <url-prefix> <es-user> <es-password> <timeout>\n')
+        print('Usage:\n\t resolve-institutions.py <inputfile> <index-name> \n')
+        print('Optional arguments:\n\t <es-host> -p <elastic-port> --url-prefix <elastic-prefix> -u <username> -s <password> -o <output-file> -t <timeout> --id-column <id-column> --place-column <place-column> --verbose\n')
+        exit()
 
     argument_list = sys.argv[4:]
-    options = "p:f:u:s:t:"
-    long_options = ["port=", "url-prefix=", "es-user=", "es-password=", "timeout=", "id-column=", "place-column=", "verbose"]
+    options = "p:f:u:s:t:o:"
+    long_options = ["port=", "url-prefix=", "es-user=", "es-password=", "timeout=", "id-column=", "place-column=", "output=", "verbose"]
 
     try:
         # Parsing argument
@@ -211,8 +236,10 @@ def main():
                 ID_COLUMN_NAME = current_value
             if current_argument in ("--place-column"):
                 PLACE_COLUMN_NAME = current_value
+            if current_argument in ("-o", "--output"):
+                OUTPUT_FILE = current_value
             if current_argument in ("--verbose"):
-                log_setup(FALSE)
+                log_setup(False)
     except getopt.error as err:
         print (str(err))
         sys.exit(2)
@@ -234,13 +261,24 @@ def main():
         })
 
     place_reader = PlaceReader(INPUT_FILE, **extra_parameters)
+
+    if OUTPUT_FILE:
+        file = open(OUTPUT_FILE, "w")
+        csvwriter = csv.writer(file)
+        csvwriter.writerow(["Original Place Name", "Found Place Name", "Coords", "Wikipedia", "Original Id"])
+
     for place in place_reader.read_places():
         result = resolver.resolve_place(place["place_name"])
         if "id" in place:
             result.update({
                 "id": place["id"]
             })
-        print(result)
+        if file:
+            csvwriter.writerow([result["place_name"], result["wikipedia_entry_title"], result["coodinates"], result["wikipedia_entry_url"], result["id"]])
+            file.flush()
+
+    if OUTPUT_FILE:
+        file.close()
 
 if __name__ == "__main__":
     main()
