@@ -126,7 +126,7 @@ class PlaceResolver:
         # Check if a string needs to be converted to decimal degrees by looking for ordinal directions
         # The length of coordinates is used to determine what data is present
         # Example String Coord|40|00|00|N|116|19|36|E|region:CN-11_type:edu|display=inline,title
-        if string in ["N", "E"]:
+        if string in ["N", "E", "n", "e"]:
             if len(coords) == 3:
                 processed_coords =  self.process_length_3_coords(coords)
             elif len(coords) == 2:
@@ -135,7 +135,7 @@ class PlaceResolver:
                 processed_coords = coords[0]
             coords.clear()
             return processed_coords
-        elif string in ["S", "W"]:
+        elif string in ["S", "W", "s", "w"]:
             # handle negative coords
             if len(coords) == 3:
                 return (self.process_length_3_coords(coords) * -1)
@@ -169,15 +169,14 @@ class PlaceResolver:
             print(potential_place_entries[0]['coordinates'])
             result.update({
                 'wikipedia_entry_title': potential_place_entries[0]['title'],
-                'coodinates': potential_place_entries[0]['coordinates'],
-                'wikipedia_entry_url': "https://en.wikipedia.org/wiki/" + potential_place_entries[0]['title'],
-                'cleaned_coordinates': self.clean_coordinates(potential_place_entries[0]['coordinates'])
+                'coodinates': self.clean_coordinates(potential_place_entries[0]['coordinates']),
+                'wikipedia_entry_url': "https://en.wikipedia.org/wiki/" + potential_place_entries[0]['title']
             })
-            log("INFO: Selecting: '{}' at {}".format(potential_place_entries[0]['title'], potential_place_entries[0]['coordinates']), always=True)
+            log("INFO: Selecting: '{}' at {} - {}".format(potential_place_entries[0]['title'], potential_place_entries[0]['coordinates'], self.clean_coordinates(potential_place_entries[0]['coordinates'])), always=True)
 
         return result
 
-def log(msg, always=False):
+def log(msg, always=True):
     if not SILENT or always:
         print(msg)
 
