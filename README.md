@@ -64,3 +64,13 @@ The following optional parameter can be passed when creating a `PlaceResolver` o
 - `timeout`: timeout to wait for Elasticsearch in seconds; defaults to `3600`
 - `silent`: enables logging; if set to `False`, a log file place_resolver.log will be created; defaults to `True`
 
+`resolve_place` returns a dictionary with of the following format:
+```
+{
+   'place_name': 'Arizona State University', 
+   'wikipedia_entry_title': 'Arizona State University', 
+   'coodinates': [33.421, -111.933], 
+   'wikipedia_entry_url': 'https://en.wikipedia.org/wiki/Arizona State University'
+}
+```
+
